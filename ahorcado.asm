@@ -108,8 +108,22 @@ read_guess:
 invalid_input:
     ; Esta función maneja el caso de entrada no válida, puedes personalizarla según tus necesidades
     ; Puedes mostrar un mensaje de error o realizar cualquier otra acción que desees
-    ; Luego, vuelve al bucle principal del juego
+
+    ; Ejemplo: Mostrar un mensaje de error
+    mov rax, 1        ; syscall number for sys_write
+    mov rdi, 1        ; File descriptor 1 (stdout)
+    lea rsi, [invalid_input_msg]
+    mov rdx, invalid_input_msg_length
+    syscall
+
+    ; Vuelve al bucle principal del juego
     ret
+
+section .data
+    ; Agrega un mensaje de error personalizado según tus preferencias
+    invalid_input_msg db "Entrada no válida. Introduce una letra válida.", 10
+    invalid_input_msg_length equ $ - invalid_input_msg
+
 
 ; Función para verificar si la letra está en la palabra
 check_guess:
