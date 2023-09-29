@@ -41,7 +41,6 @@ init_game:
     ret
 
 ; Función para dibujar la palabra oculta y las letras adivinadas
-; Función para dibujar la palabra oculta y las letras adivinadas
 draw_game:
     ; Borra la pantalla o la consola (dependiendo de tu plataforma)
     ; Puedes usar interrupciones de sistema para borrar la pantalla
@@ -87,11 +86,6 @@ print_string:
     ; Utiliza la interrupción de sistema adecuada para imprimir la cadena en la consola
     ret
 
-; Otras declaraciones de datos y funciones auxiliares según sea necesario
-...
-
-
-; Función para leer la letra adivinada del usuario
 ; Función para leer la letra adivinada del usuario
 read_guess:
     ; Reserva espacio para almacenar la letra adivinada
@@ -105,24 +99,14 @@ read_guess:
     cmp rax, 1            ; Comprueba si se leyó un carácter
     jne .invalid_input    ; Salta si no se leyó un carácter válido
 
-    ; Verifica si la letra es una letra minúscula y la convierte a mayúscula si es necesario
-    mov al, [guessed_word] ; Carga la letra adivinada
-    cmp al, 'a'            ; Comprueba si es una letra minúscula
-    jl .store_guess        ; Salta si no es una letra minúscula
-    cmp al, 'z'            ; Comprueba si es una letra minúscula
-    jg .store_guess        ; Salta si no es una letra minúscula
-    sub al, 32             ; Convierte a mayúscula
-    mov [guessed_word], al ; Almacena la letra adivinada en mayúscula
+    ; Almacena el carácter leído en guessed_word
+    mov [guessed_word], al
 
-.store_guess:
-    ; Incrementa el puntero en guessed_word para la próxima letra
-    inc rsi
     ret
 
 .invalid_input:
     ; Maneja el caso de entrada no válida (puedes mostrar un mensaje de error)
     ret
-
 
 ; Función para verificar si la letra está en la palabra
 check_guess:
@@ -138,37 +122,108 @@ check_game_over:
 
 ; Otras funciones auxiliares según sea necesario
 ...
-; Función para dibujar la palabra oculta y las letras adivinadas
-draw_game:
-    ; Borra la pantalla o la consola (dependiendo de tu plataforma)
-    ; y dibuja la palabra oculta con letras adivinadas
-    ; Usa caracteres "_" para letras no adivinadas
-    ; y muestra el número de intentos restantes
-    ; Puedes usar las interrupciones de sistema adecuadas para borrar y mostrar texto en la pantalla
-    ret
-
 ; Función para leer la letra adivinada del usuario
 read_guess:
-    ; Lee una letra del usuario desde la entrada estándar (teclado)
-    ; y almacena la letra adivinada en [guessed_word]
-    ; Puedes usar interrupciones de sistema para leer caracteres desde la entrada estándar
-    ; y almacenarlos en [guessed_word]
+    ; Reserva espacio para almacenar la letra adivinada
+    mov rsi, guessed_word  ; Dirección de guessed_word
+    mov rdx, 1            ; Leer un solo carácter
+    mov rax, 0            ; syscall number for sys_read
+    mov rdi, 0            ; File descriptor 0 (stdin)
+    syscall
+
+    ; Verifica si se ha leído un carácter válido
+    cmp rax, 1            ; Comprueba si se leyó un carácter
+    jne .invalid_input    ; Salta si no se leyó un carácter válido
+
+    ; Almacena el carácter leído en guessed_word
+    mov [guessed_word], al
+
+    ret
+
+.invalid_input:
+    ; Maneja el caso de entrada no válida (puedes mostrar un mensaje de error)
     ret
 
 ; Función para verificar si la letra está en la palabra
 check_guess:
-    ; Verifica si la letra adivinada está en la palabra oculta ([word])
-    ; Si la letra está en la palabra, actualiza [guessed_word]
-    ; Si no está en la palabra, incrementa [attempts]
-    ; También verifica si el juego ha sido ganado o perdido
-    ; y actualiza el estado del juego en consecuencia
-    ret
+    ; Carga la letra adivinada desde guessed_word
+    mov al, [guessed_word]
+
+    ; Inicializa el puntero a la palabra
+    mov rsi, word
+
+    ; Inicializa el contador a cero
+    xor rcx, rcx
+
+    ; Comienza a comparar la letra adivinada con las letras de la palabra
+    .compare_loop:
+        ; Lee una letra de la palabra
+        mov bl, [rsi + rcx]
+
+        ; Comprueba si hemos llegado al final de la palabra
+        cmp bl, 0
+        je .not_found
+
+        ; Compara la letra adivinada con la letra de la palabra (mayúsculas)
+        cmp al, bl
+        je .found
+
+        ; Compara la letra adivinada con la letra de la palabra (minúsculas)
+        sub bl, 32  ; Convierte a mayúscula
+        cmp al, bl
+        je .found
+
+        ; Si no se encontró la letra, continúa con la siguiente
+        inc rcx
+        jmp .compare_loop
+
+    .found:
+        ; Actualiza la letra adivinada en guessed_word
+        mov [guessed_word], al
+
+    .not_found:
+        ret
 
 ; Función para verificar si el juego ha terminado
 check_game_over:
-    ; Verifica si el juego ha terminado (ganado o perdido)
-    ; Puedes usar [attempts] y [guessed_word] para determinar el estado del juego
-    ; y compararlos con la palabra oculta ([word])
+    ; Compara la palabra adivinada (guessed_word) con la palabra original (word)
+    ; Compara también el número de intentos restantes (attempts) con cero
     ; Actualiza el estado del juego y muestra un mensaje de victoria o derrota si es necesario
+
+    ; Compara la palabra adivinada con la palabra original
+    mov rsi, guessed_word
+    mov rdi, word
+    mov rcx, [word_length]
+    repe cmpsb
+
+    ; Verifica si las cadenas son iguales
+    je .word_found
+
+    ; Si no son iguales, decrementa el número de intentos restantes
+    dec byte [attempts]
+
+    ; Verifica si se agotaron los intentos
+    cmp byte [attempts], 0
+    je .game_over_loss
+
     ret
+
+.word_found:
+    ; Verifica si se ha adivinado la palabra completa
+    cmp byte [rsi], 0
+    je .game_over_win
+
+    ret
+
+.game_over_loss:
+    ; Implementa la lógica para el juego perdido (puedes mostrar un mensaje de derrota)
+    ; Actualiza el estado del juego según corresponda
+    ret
+
+.game_over_win:
+    ; Implementa la lógica para el juego ganado (puedes mostrar un mensaje de victoria)
+    ; Actualiza el estado del juego según corresponda
+    ret
+
+ 
 
