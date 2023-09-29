@@ -104,24 +104,97 @@ read_guess:
 
     ret
 
-.invalid_input:
-    ; Maneja el caso de entrada no válida (puedes mostrar un mensaje de error)
+; Función para manejar entrada no válida
+invalid_input:
+    ; Esta función maneja el caso de entrada no válida, puedes personalizarla según tus necesidades
+    ; Puedes mostrar un mensaje de error o realizar cualquier otra acción que desees
+    ; Luego, vuelve al bucle principal del juego
     ret
 
 ; Función para verificar si la letra está en la palabra
 check_guess:
-    ; Implementa la lógica para verificar si la letra adivinada está en la palabra
-    ; Actualiza [guessed_word] y [attempts] según corresponda
-    ret
+    ; Carga la letra adivinada desde guessed_word
+    mov al, [guessed_word]
+
+    ; Inicializa el puntero a la palabra
+    mov rsi, word
+
+    ; Inicializa el contador a cero
+    xor rcx, rcx
+
+    ; Comienza a comparar la letra adivinada con las letras de la palabra
+    .compare_loop:
+        ; Lee una letra de la palabra
+        mov bl, [rsi + rcx]
+
+        ; Comprueba si hemos llegado al final de la palabra
+        cmp bl, 0
+        je .not_found
+
+        ; Compara la letra adivinada con la letra de la palabra (mayúsculas)
+        cmp al, bl
+        je .found
+
+        ; Compara la letra adivinada con la letra de la palabra (minúsculas)
+        sub bl, 32  ; Convierte a mayúscula
+        cmp al, bl
+        je .found
+
+        ; Si no se encontró la letra, continúa con la siguiente
+        inc rcx
+        jmp .compare_loop
+
+    .found:
+        ; Actualiza la letra adivinada en guessed_word
+        mov [guessed_word], al
+
+    .not_found:
+        ret
 
 ; Función para verificar si el juego ha terminado
 check_game_over:
-    ; Implementa la lógica para verificar si el juego ha terminado (ganado o perdido)
-    ; Puedes utilizar [attempts] y [guessed_word] para determinar el estado del juego
+    ; Compara la palabra adivinada (guessed_word) con la palabra original (word)
+    ; Compara también el número de intentos restantes (attempts) con cero
+    ; Actualiza el estado del juego y muestra un mensaje de victoria o derrota si es necesario
+
+    ; Compara la palabra adivinada con la palabra original
+    mov rsi, guessed_word
+    mov rdi, word
+    mov rcx, [word_length]
+    repe cmpsb
+
+    ; Verifica si las cadenas son iguales
+    je .word_found
+
+    ; Si no son iguales, decrementa el número de intentos restantes
+    dec byte [attempts]
+
+    ; Verifica si se agotaron los intentos
+    cmp byte [attempts], 0
+    je .game_over_loss
+
     ret
 
-; Otras funciones auxiliares según sea necesario
-...
+.word_found:
+    ; Verifica si se ha adivinado la palabra completa
+    cmp byte [rsi], 0
+    je .game_over_win
+
+    ret
+
+.game_over_loss:
+    ; Implementa la lógica para el juego perdido (puedes mostrar un mensaje de derrota)
+    ; Actualiza el estado del juego según corresponda
+    ; Luego, vuelve al bucle principal del juego
+    ret
+
+.game_over_win:
+    ; Implementa la lógica para el juego ganado (puedes mostrar un mensaje de victoria)
+    ; Actualiza el estado del juego según corresponda
+    ; Luego, vuelve al bucle principal del juego
+    ret
+
+ 
 ; Función para leer la letra adivinada del usuario
 read_guess:
     ; Reserva espacio para almacenar la letra adivinada
@@ -218,12 +291,49 @@ check_game_over:
 .game_over_loss:
     ; Implementa la lógica para el juego perdido (puedes mostrar un mensaje de derrota)
     ; Actualiza el estado del juego según corresponda
+    ; Luego, vuelve al bucle principal del juego
+
+    ; Puedes personalizar esta parte para mostrar un mensaje de derrota o realizar cualquier otra acción
+    ; Aquí, simplemente imprimiremos un mensaje de derrota y reiniciaremos el juego.
+
+    mov rax, 1        ; syscall number for sys_write
+    mov rdi, 1        ; File descriptor 1 (stdout)
+    lea rsi, [loss_msg]
+    mov rdx, loss_msg_length
+    syscall
+
+    ; Reiniciar el juego (puedes agregar la lógica para reiniciar aquí)
+    call init_game
+
     ret
 
 .game_over_win:
     ; Implementa la lógica para el juego ganado (puedes mostrar un mensaje de victoria)
     ; Actualiza el estado del juego según corresponda
+    ; Luego, vuelve al bucle principal del juego
+
+    ; Puedes personalizar esta parte para mostrar un mensaje de victoria o realizar cualquier otra acción
+    ; Aquí, simplemente imprimiremos un mensaje de victoria y reiniciaremos el juego.
+
+    mov rax, 1        ; syscall number for sys_write
+    mov rdi, 1        ; File descriptor 1 (stdout)
+    lea rsi, [win_msg]
+    mov rdx, win_msg_length
+    syscall
+
+    ; Reiniciar el juego (puedes agregar la lógica para reiniciar aquí)
+    call init_game
+
     ret
+
+section .data
+    ; Agrega mensajes personalizados para victoria y derrota según tu preferencia
+    loss_msg db "Has perdido. ¡Inténtalo de nuevo!", 10
+    loss_msg_length equ $ - loss_msg
+
+    win_msg db "¡Felicidades! Has ganado.", 10
+    win_msg_length equ $ - win_msg
+
 
  
 
